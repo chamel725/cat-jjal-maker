@@ -22,9 +22,6 @@
       flex-wrap: wrap;
       gap: 15px;
     }
-    /* .favorites img {
-      width: 150px;
-    } */
   </style>
   <body>
     <div id="app"></div>
@@ -49,7 +46,7 @@
               //object추가 할 때 중괄호 한 번 더
               //내가 원하는 태그에 style이라는 tag를 넘기고 거기에 object로 key랑 value값 넘겨주기
               //value값은 string으로 처리
-              style={{ width: "150px", border: "1px solid red" }}
+              style={{ width: "150px" }}
             />
           </li>
         );
@@ -64,10 +61,21 @@
       }
 
       const MainCard = ({ img }) => {
+        function handleHeartClick() {
+          console.log("하트 눌렀음");
+        }
+        function handleHeartMouseOver() {
+          console.log("하트 스쳐 지나감");
+        }
         return (
           <div className="main-card">
             <img src={img} alt="고양이" width="400" />
-            <button>🤍</button>
+            <button
+              onClick={handleHeartClick} //onClick의 경우 handle~Click
+              onMouseOver={handleHeartMouseOver} //onMouseOber의 경우 handle~MouseOver라고 짓는게 관례
+            >
+              🤍
+            </button>
           </div>
         );
       };
@@ -78,8 +86,14 @@
       };
 
       const Form = () => {
+        //form의 submit에 첫 번째 인자로 event가 들어오고
+        //그 이벤트에 preventDefault를 했을 때 이벤트의 기본 동작이 막아진다.
+        function handleFormSubmit(event) {
+          event.preventDefault();
+          console.log("폼 전송됨");
+        }
         return (
-          <form>
+          <form onSubmit={handleFormSubmit}>
             <input
               type="text"
               name="name"
