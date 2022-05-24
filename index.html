@@ -36,6 +36,16 @@
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
 
     <script type="text/babel">
+      //LocalStorage에 무조건적으로 string값으러 저장되는 문제 해결
+      const jsonLocalStorage = {
+        setItem: (key, value) => {
+          localStorage.setItem(key, JSON.stringify(value));
+        },
+        getItem: (key) => {
+          return JSON.parse(localStorage.getItem(key));
+        },
+      };
+
       function CatItem(props) {
         console.log(props);
         return (
@@ -62,7 +72,7 @@
       }
       //하트 눌렀을 때 이벤트를 이 안에서 처리하는게 아니고
       //함수를 상위에 올린 다음, 그걸 이 MainCard에서 받아서 처리해보자.
-      const MainCard = ({ img, handleHeartClick }) => {
+      const MainCard = ({ img, onHeartClick }) => {
         function handleHeartMouseOver() {
           console.log("하트 스쳐 지나감");
         }
@@ -70,7 +80,7 @@
           <div className="main-card">
             <img src={img} alt="고양이" width="400" />
             <button
-              onClick={handleHeartClick} //onClick의 경우 handle~Click
+              onClick={onHeartClick} //onClick의 경우 handle~Click
               //onMouseOver={handleHeartMouseOver} onMouseOver의 경우 handle~MouseOver라고 짓는게 관례
             >
               🤍
@@ -78,16 +88,19 @@
           </div>
         );
       };
+
       const Title = (props) => {
         console.log(props);
         //태그 안에 적은 내용은 children이라는 이름으로 넘어온다.
         return <h1>{props.children}</h1>;
       };
+
       //props로 함수자체를 넘겨줄 수 있다.
-      const Form = () => {
+      const Form = ({ updateMainCat }) => {
         const includesHangul = (text) => /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/i.test(text);
-        const [value, setValue] = useState("");
-        const [errorMessage, setErrorMessage] = useState("");
+        const [value, setValue] = React.useState("");
+        const [errorMessage, setErrorMessage] = React.useState("");
+
         //input에 값을 입력할 떄 마다 값이 잘 들어오는 지 찍어보자.
         function handleInputChange(e) {
           const userValue = e.target.value;
@@ -98,17 +111,22 @@
           if (includesHangul(userValue)) {
             setErrorMessage("한글은 입력할 수 없습니다.");
           }
-          function handleFormSubmit(e) {
-            e.preventDefault();
-            //else쓸 거 없이 setErrorMessage를 빈 값으로 초기화 해두자.
-            setErrorMessage("");
-            if (value === "") {
-              setErrorMessage("빈 값으로 만들 수 없습니다.");
-            }
-          }
-
-          console.log(e.target.value.toUpperCase());
+          setValue(userValue.toUpperCase());
         }
+
+        function handleFormSubmit(e) {
+          e.preventDefault();
+          //else쓸 거 없이 setErrorMessage를 빈 값으로 초기화 해두자.
+          setErrorMessage("");
+          if (value === "") {
+            setErrorMessage("빈 값으로 만들 수 없습니다.");
+            return; //함수가 updateMainCat까지 가지 않고 끝날 수 있게
+          }
+          updateMainCat();
+        }
+
+        //console.log(e.target.value.toUpperCase());
+
         //form의 submit에 첫 번째 인자로 event가 들어오고
         //그 이벤트에 preventDefault를 했을 때 이벤트의 기본 동작이 막아진다.
         return (
@@ -133,23 +151,33 @@
           "https://cataas.com//cat/5e9970351b7a400011744233/says/inflearn";
         const CAT3 =
           "https://cataas.com/cat/595f280b557291a9750ebf65/says/JavaScript";
-        const [counter, setCounter] = React.useState(1);
+        const [counter, setCounter] = React.useState(
+          //localstorage는 무조건 string값으로 저장되므로 number값으로 전환
+          jsonLocalStorage.getItem("counter")
+        );
         const [mainCat, setMainCat] = React.useState(CAT1);
-        const [favorites, setFavorites] = React.useState([CAT1, CAT2]);
+        const [favorites, setFavorites] = React.useState(
+          //null값이면 빈 배열로 초기화
+          jsonLocalStorage.getItem("favorites") || [] // ||:앞에께 없으면 뒤에껄 써라.
+        );
         console.log("카운터", counter);
 
-        function handleFormSubmit(event) {
-          event.preventDefault();
+        function updateMainCat() {
+          //event.preventDefault();
           console.log("폼 전송됨");
-          setCounter(counter + 1);
           setMainCat(CAT2);
+          const nextCounter = counter + 1;
+          setCounter(nextCounter);
+          jsonLocalStorage.setItem("counter", nextCounter);
         }
-
+        //handleHeartClick했을 때 localstorage.setItem으로 favorites저장하면된다.
         function handleHeartClick() {
+          const nextFavorites = [...favorites, mainCat];
           console.log("하트 눌렀음");
           //ES6 + 스프레드 오퍼레이터 문법
           //현재 있는 기존 배열 CAT1,CAT2를 펼쳐쓴뒤 CAT3를 쓴것.
-          setFavorites([...favorites, CAT3]); //setFavorites([CAT1,CAT2,CAT3])
+          setFavorites(nextFavorites); //setFavorites([CAT1,CAT2,CAT3])
+          jsonLocalStorage.setItem("favorites", nextFavorites);
         }
         //Form component(자식 컴포넌트)안에서만 쓰이던 상태를 상위 컴포넌트에서 같이 쓰고 싶을 때
         //그 상태를 위로 끌어롤리게 된다. -> 상태끌어올리기(lifting state up)
@@ -157,8 +185,8 @@
         return (
           <div>
             <Title>{counter}번째 고양이 가라사대</Title>
-            <Form handleFormSubmit={handleFormSubmit} />
-            <MainCard img={mainCat} handleHeartClick={handleHeartClick} />
+            <Form updateMainCat={updateMainCat} />
+            <MainCard img={mainCat} onHeartClick={handleHeartClick} />
             <Favorites favorites={favorites} />
           </div>
         );
