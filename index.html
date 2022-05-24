@@ -36,7 +36,6 @@
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
 
     <script type="text/babel">
-      //component는 무조건 대문자
       function CatItem(props) {
         console.log(props);
         return (
@@ -51,19 +50,19 @@
           </li>
         );
       }
-      function Favorites() {
+      //component는 무조건 대문자
+      function Favorites({ favorites }) {
         return (
           <ul className="favorites">
-            <CatItem img="https://cataas.com//cat/5e9970351b7a400011744233/says/inflearn" />
-            <CatItem img="https://cataas.com/cat/595f280b557291a9750ebf65/says/JavaScript" />
+            {favorites.map((cat) => (
+              <CatItem img={cat} key={cat} />
+            ))}
           </ul>
         );
       }
-
-      const MainCard = ({ img }) => {
-        function handleHeartClick() {
-          console.log("하트 눌렀음");
-        }
+      //하트 눌렀을 때 이벤트를 이 안에서 처리하는게 아니고
+      //함수를 상위에 올린 다음, 그걸 이 MainCard에서 받아서 처리해보자.
+      const MainCard = ({ img, handleHeartClick }) => {
         function handleHeartMouseOver() {
           console.log("하트 스쳐 지나감");
         }
@@ -72,7 +71,7 @@
             <img src={img} alt="고양이" width="400" />
             <button
               onClick={handleHeartClick} //onClick의 경우 handle~Click
-              onMouseOver={handleHeartMouseOver} //onMouseOber의 경우 handle~MouseOver라고 짓는게 관례
+              //onMouseOver={handleHeartMouseOver} onMouseOver의 경우 handle~MouseOver라고 짓는게 관례
             >
               🤍
             </button>
@@ -84,38 +83,89 @@
         //태그 안에 적은 내용은 children이라는 이름으로 넘어온다.
         return <h1>{props.children}</h1>;
       };
-
+      //props로 함수자체를 넘겨줄 수 있다.
       const Form = () => {
+        const includesHangul = (text) => /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/i.test(text);
+        const [value, setValue] = useState("");
+        const [errorMessage, setErrorMessage] = useState("");
+        //input에 값을 입력할 떄 마다 값이 잘 들어오는 지 찍어보자.
+        function handleInputChange(e) {
+          const userValue = e.target.value;
+          setErrorMessage("");
+          //userValue에 한글이 포함되어 있는지 검사
+          console.log(includesHangul(userValue));
+          //includesHangul가 true면 errormessage출력
+          if (includesHangul(userValue)) {
+            setErrorMessage("한글은 입력할 수 없습니다.");
+          }
+          function handleFormSubmit(e) {
+            e.preventDefault();
+            //else쓸 거 없이 setErrorMessage를 빈 값으로 초기화 해두자.
+            setErrorMessage("");
+            if (value === "") {
+              setErrorMessage("빈 값으로 만들 수 없습니다.");
+            }
+          }
+
+          console.log(e.target.value.toUpperCase());
+        }
         //form의 submit에 첫 번째 인자로 event가 들어오고
         //그 이벤트에 preventDefault를 했을 때 이벤트의 기본 동작이 막아진다.
-        function handleFormSubmit(event) {
-          event.preventDefault();
-          console.log("폼 전송됨");
-        }
         return (
           <form onSubmit={handleFormSubmit}>
             <input
               type="text"
               name="name"
               placeholder="영어 대사를 입력해주세요"
+              value={value}
+              onChange={handleInputChange} //input에 값이 체인지 떄 마다 이 함수가 불려라(내장API)
             />
             <button type="submit">생성</button>
+            <p style={{ color: "red" }}>{errorMessage}</p>
           </form>
         );
       };
+      //counter상태를 부모 component에 옮겨보자
+      const App = () => {
+        const CAT1 =
+          "https://cataas.com/cat/60b73094e04e18001194a309/says/react";
+        const CAT2 =
+          "https://cataas.com//cat/5e9970351b7a400011744233/says/inflearn";
+        const CAT3 =
+          "https://cataas.com/cat/595f280b557291a9750ebf65/says/JavaScript";
+        const [counter, setCounter] = React.useState(1);
+        const [mainCat, setMainCat] = React.useState(CAT1);
+        const [favorites, setFavorites] = React.useState([CAT1, CAT2]);
+        console.log("카운터", counter);
 
-      const app = (
-        <div>
-          <Title>1번째 고양이 가라사대</Title>
-          <Title>2번째 고양이 가라사대</Title>
-          <Form />
-          <MainCard img="https://cataas.com/cat/60b73094e04e18001194a309/says/react" />
-          <Favorites />
-        </div>
-      );
+        function handleFormSubmit(event) {
+          event.preventDefault();
+          console.log("폼 전송됨");
+          setCounter(counter + 1);
+          setMainCat(CAT2);
+        }
+
+        function handleHeartClick() {
+          console.log("하트 눌렀음");
+          //ES6 + 스프레드 오퍼레이터 문법
+          //현재 있는 기존 배열 CAT1,CAT2를 펼쳐쓴뒤 CAT3를 쓴것.
+          setFavorites([...favorites, CAT3]); //setFavorites([CAT1,CAT2,CAT3])
+        }
+        //Form component(자식 컴포넌트)안에서만 쓰이던 상태를 상위 컴포넌트에서 같이 쓰고 싶을 때
+        //그 상태를 위로 끌어롤리게 된다. -> 상태끌어올리기(lifting state up)
+        //상태를 다른 컴포넌트에서 선언하도록 바꾸고 위에서 만든 상태를 자식컴포넌트로의 props로 넘겨준다.
+        return (
+          <div>
+            <Title>{counter}번째 고양이 가라사대</Title>
+            <Form handleFormSubmit={handleFormSubmit} />
+            <MainCard img={mainCat} handleHeartClick={handleHeartClick} />
+            <Favorites favorites={favorites} />
+          </div>
+        );
+      };
 
       const 여기다가그려 = document.querySelector("#app");
-      ReactDOM.render(app, 여기다가그려);
+      ReactDOM.render(<App />, 여기다가그려);
     </script>
   </body>
 </html>
