@@ -46,6 +46,16 @@
         },
       };
 
+      //text를 인자로 받아서 대사를 넘기면 대사에 맞는 고양이 이미지를 반환
+      const fetchCat = async (text) => {
+        const OPEN_API_DOMAIN = "https://cataas.com";
+        const response = await fetch(
+          `${OPEN_API_DOMAIN}/cat/says/${text}?json=true`
+        );
+        const responseJson = await response.json();
+        return `${OPEN_API_DOMAIN}/${responseJson.url}`;
+      };
+
       function CatItem(props) {
         console.log(props);
         return (
@@ -62,6 +72,11 @@
       }
       //component는 무조건 대문자
       function Favorites({ favorites }) {
+        //고양이 데이터 없으면 메세지 띄우기
+        //조건부 렌더링
+        if (favorites.length === 0) {
+          return <div>사진 위 하트를 눌러 고양이 사진을 저장해봐요</div>;
+        }
         return (
           <ul className="favorites">
             {favorites.map((cat) => (
@@ -72,7 +87,9 @@
       }
       //하트 눌렀을 때 이벤트를 이 안에서 처리하는게 아니고
       //함수를 상위에 올린 다음, 그걸 이 MainCard에서 받아서 처리해보자.
-      const MainCard = ({ img, onHeartClick }) => {
+      const MainCard = ({ img, onHeartClick, alreadyFavorite }) => {
+        const heartIcon = alreadyFavorite ? "💖" : "🤍";
+
         function handleHeartMouseOver() {
           console.log("하트 스쳐 지나감");
         }
@@ -83,7 +100,7 @@
               onClick={onHeartClick} //onClick의 경우 handle~Click
               //onMouseOver={handleHeartMouseOver} onMouseOver의 경우 handle~MouseOver라고 짓는게 관례
             >
-              🤍
+              {heartIcon}
             </button>
           </div>
         );
@@ -122,7 +139,7 @@
             setErrorMessage("빈 값으로 만들 수 없습니다.");
             return; //함수가 updateMainCat까지 가지 않고 끝날 수 있게
           }
-          updateMainCat();
+          updateMainCat(value);
         }
 
         //console.log(e.target.value.toUpperCase());
@@ -151,25 +168,51 @@
           "https://cataas.com//cat/5e9970351b7a400011744233/says/inflearn";
         const CAT3 =
           "https://cataas.com/cat/595f280b557291a9750ebf65/says/JavaScript";
-        const [counter, setCounter] = React.useState(
-          //localstorage는 무조건 string값으로 저장되므로 number값으로 전환
-          jsonLocalStorage.getItem("counter")
-        );
+        //localstorage는 무조건 string값으로 저장되므로 number값으로 전환
+        const [counter, setCounter] = React.useState(() => {
+          return jsonLocalStorage.getItem("counter");
+        });
         const [mainCat, setMainCat] = React.useState(CAT1);
-        const [favorites, setFavorites] = React.useState(
-          //null값이면 빈 배열로 초기화
-          jsonLocalStorage.getItem("favorites") || [] // ||:앞에께 없으면 뒤에껄 써라.
-        );
-        console.log("카운터", counter);
+        //null값이면 빈 배열로 초기화
+        // ||:앞에께 없으면 뒤에껄 써라.
+        const [favorites, setFavorites] = React.useState(() => {
+          return jsonLocalStorage.getItem("favorites") || [];
+        });
+        //includes:배열안의 값이 있는지 true false로 확인해서 반환
+        const alreadyFavorite = favorites.includes(mainCat);
+        //app진입시 api데이터를 콜해서 maincat으로 갈아주기.
+        async function setInitialCat() {
+          const newCat = await fetchCat("First cat");
+          setMainCat(newCat);
+        }
 
-        function updateMainCat() {
+        //내가 원하는 시점만 함수를 호출하고 싶을 때 사용
+        //기본적으로 ui가 새로 업데이트 될 떄마다 계속 불린다.
+        //내가 원하는 상태를 두번째 인자 배열에 넣어서 그 상태가 바뀔 떄만 호출하게 하자.
+        //맨 처음 app이 호출됐을때만 한 번 부르고 싶을 때는 빈 배열
+        React.useEffect(() => {
+          setInitialCat();
+        }, []);
+
+        React.useEffect(() => {
+          console.log("hello");
+        }, [counter]);
+
+        //await문법 확인
+        async function updateMainCat(value) {
+          //input에 입력한 value값을 가져오자
+          const newCat = await fetchCat(value);
           //event.preventDefault();
           console.log("폼 전송됨");
-          setMainCat(CAT2);
-          const nextCounter = counter + 1;
-          setCounter(nextCounter);
-          jsonLocalStorage.setItem("counter", nextCounter);
+          setMainCat(newCat); //API콜해서 받은 응답값을 넣어보자
+
+          setCounter((prev) => {
+            const nextCounter = prev + 1;
+            jsonLocalStorage.setItem("counter", nextCounter);
+            return nextCounter;
+          });
         }
+
         //handleHeartClick했을 때 localstorage.setItem으로 favorites저장하면된다.
         function handleHeartClick() {
           const nextFavorites = [...favorites, mainCat];
@@ -179,14 +222,21 @@
           setFavorites(nextFavorites); //setFavorites([CAT1,CAT2,CAT3])
           jsonLocalStorage.setItem("favorites", nextFavorites);
         }
+        //counter가 null이면 counter보여주지 않기
+        const counterTitle = counter === null ? "" : counter + "번째 ";
+
         //Form component(자식 컴포넌트)안에서만 쓰이던 상태를 상위 컴포넌트에서 같이 쓰고 싶을 때
         //그 상태를 위로 끌어롤리게 된다. -> 상태끌어올리기(lifting state up)
         //상태를 다른 컴포넌트에서 선언하도록 바꾸고 위에서 만든 상태를 자식컴포넌트로의 props로 넘겨준다.
         return (
           <div>
-            <Title>{counter}번째 고양이 가라사대</Title>
+            <Title>{counterTitle} 고양이 가라사대</Title>
             <Form updateMainCat={updateMainCat} />
-            <MainCard img={mainCat} onHeartClick={handleHeartClick} />
+            <MainCard
+              img={mainCat}
+              onHeartClick={handleHeartClick}
+              alreadyFavorite={alreadyFavorite}
+            />
             <Favorites favorites={favorites} />
           </div>
         );

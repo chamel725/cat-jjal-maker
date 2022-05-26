@@ -16,6 +16,7 @@ const jsonLocalStorage = {
   },
 };
 
+//text를 인자로 받아서 대사를 넘기면 대사에 맞는 고양이 이미지를 반환
 const fetchCat = async (text) => {
   const OPEN_API_DOMAIN = "https://cataas.com";
   const response = await fetch(`${OPEN_API_DOMAIN}/cat/says/${text}?json=true`);
