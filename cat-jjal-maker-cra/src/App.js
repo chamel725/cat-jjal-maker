@@ -133,8 +133,11 @@ const App = () => {
   const CAT3 =
     "https://cataas.com/cat/595f280b557291a9750ebf65/says/JavaScript";
   //localstorage는 무조건 string값으로 저장되므로 number값으로 전환
+  
+  //초기값을 함수로 설정할 경우 한 번만 부른다.ㅌ
   const [counter, setCounter] = useState(() => {
     return jsonLocalStorage.getItem("counter");
+    
   });
   const [mainCat, setMainCat] = useState(CAT1);
   //null값이면 빈 배열로 초기화
